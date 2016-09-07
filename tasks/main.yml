@@ -1,0 +1,93 @@
+---
+# tasks file for etcd
+# TODO: assert os type is ubuntu
+
+# Install
+
+- name: Make sure ansible temp dir exists in remote host
+  file:
+    path: "{{ ansible_temp_dir }}"
+    state: directory
+
+- name: Copy local etcd release file to remote host
+  copy:
+    src: "{{ etcd_release_dir }}/etcd-v{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "{{ ansible_temp_dir }}/etcd-v{{ etcd_version }}-linux-amd64.tar.gz"
+- name: Extract tar file
+  unarchive:
+    src: "{{ ansible_temp_dir }}/etcd-v{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: /usr/local
+    copy: no
+
+
+- name: set variable for etcd install.
+  set_fact:
+    etcd_bin_dir: /usr/bin
+    etcd_conf_dir: /etc/etcd
+
+- name: Create symlinks
+  file:
+    src: /usr/local/etcd-v{{ etcd_version }}-linux-amd64/{{ item }}
+    dest: "{{ etcd_bin_dir }}/{{ item }}"
+    state: link
+  with_items:
+    - etcd
+    - etcdctl
+  register: etcd_binary_file
+
+# Configure
+
+- name: Create etcd config directory
+  file:
+    path: "{{ etcd_conf_dir }}"
+    state: directory
+
+- name: Write etcd config file
+  template:
+    src: etcd.conf.j2
+    dest: "{{ etcd_conf_dir }}/etcd.conf"
+  register: etcd_config_file
+
+- name: Create upstart script
+  template:
+    src: etcd.upstart.j2
+    dest: /etc/init/etcd.conf
+  register: etcd_upstart_file
+
+
+# check the iptable.
+
+- name: Get iptables rules
+  command: iptables -L --wait
+  register: iptablesrules
+  always_run: yes
+
+- name: Enable iptables at boot
+  service: name=iptables enabled=yes state=started
+
+- name: Open etcd client port with iptables
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "etcd"
+  notify:
+    - Save iptables rules
+  with_items:
+    - "{{ etcd_client_port }}"
+    - "{{ etcd_peer_port }}"
+  when: "'etcd' not in iptablesrules.stdout"
+
+
+# Start.
+- name: Ensure etcd start and also start on boot
+  service: name=etcd enabled=yes state=started
+
+- name: Start etcd
+  service: name=etcd state=started
+  register: etcd_started
+
+
+- name: Restart etcd
+  service:
+    name: etcd
+    state: restarted
+  when: (etcd_binary_file.changed == true) or (etcd_config_file.changed == true) or (etcd_upstart_file.changed == true)
+
+

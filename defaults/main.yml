@@ -1,0 +1,40 @@
+---
+# defaults file for etcd
+
+# ansible temp dir to store the etcd files in remote hosts.
+ansible_temp_dir: /tmp/.ansible/files
+
+# place to store the etcd release tar file in local machine
+etcd_release_dir: /tmp/etcd_release
+
+# etcd version.
+etcd_version: 3.0.7
+
+# where the etcd and etcdctl file will be installed in.
+etcd_bin_dir: /usr/bin
+
+# where the etcd config file will comes to.
+etcd_conf_dir: /etc/etcd
+
+# where etcd store data.
+etcd_data_dir: /var/lib/etcd
+
+# http port that client should use.
+etcd_client_port: 2379
+etcd_peer_port: 2380
+
+etcd_peers_group: etcd
+
+etcd_url_scheme: http
+etcd_peer_url_scheme: http
+
+etcd_initial_cluster_state: new
+etcd_initial_cluster_token: etcd-k8-cluster
+
+# Interface on which etcd listens.
+# Useful on systems when default interface is not connected to other machines,
+# for example as in Vagrant+VirtualBox configuration.
+# Note that this variable can't be set in per-host manner with current implementation.
+etcd_interface: "{{ ansible_default_ipv4.interface }}"
+
+etcd_machine_address: "{{ hostvars[inventory_hostname]['ansible_' + etcd_interface].ipv4.address }}"
