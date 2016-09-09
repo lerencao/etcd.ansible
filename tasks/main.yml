@@ -20,11 +20,6 @@
     copy: no
 
 
-- name: set variable for etcd install.
-  set_fact:
-    etcd_bin_dir: /usr/bin
-    etcd_conf_dir: /etc/etcd
-
 - name: Create symlinks
   file:
     src: /usr/local/etcd-v{{ etcd_version }}-linux-amd64/{{ item }}
