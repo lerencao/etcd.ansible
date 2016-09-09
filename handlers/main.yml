@@ -1,5 +1,5 @@
 ---
 # handlers file for etcd
 
-- name: Save iptables rules
-  command: service iptables save
+# - name: Save iptables rules
+#   command: service iptables save

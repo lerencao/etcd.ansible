@@ -54,27 +54,6 @@
     dest: /etc/init/etcd.conf
   register: etcd_upstart_file
 
-
-# check the iptable.
-
-- name: Get iptables rules
-  command: iptables -L --wait
-  register: iptablesrules
-  always_run: yes
-
-- name: Enable iptables at boot
-  service: name=iptables enabled=yes state=started
-
-- name: Open etcd client port with iptables
-  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "etcd"
-  notify:
-    - Save iptables rules
-  with_items:
-    - "{{ etcd_client_port }}"
-    - "{{ etcd_peer_port }}"
-  when: "'etcd' not in iptablesrules.stdout"
-
-
 # Start.
 - name: Ensure etcd start and also start on boot
   service: name=etcd enabled=yes state=started
@@ -83,11 +62,32 @@
   service: name=etcd state=started
   register: etcd_started
 
-
 - name: Restart etcd
   service:
     name: etcd
     state: restarted
   when: (etcd_binary_file.changed == true) or (etcd_config_file.changed == true) or (etcd_upstart_file.changed == true)
+
+
+
+## TODO: Ubuntu 14.04 has no iptables service, and is disabled by default.
+# check the iptable.
+
+# - name: Get iptables rules
+#   command: iptables -L --wait
+#   register: iptablesrules
+#   always_run: yes
+
+# - name: Enable iptables at boot
+#   service: name=iptables enabled=yes state=started
+
+# - name: Open etcd client port with iptables
+#   command: iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "etcd"
+#   notify:
+#     - Save iptables rules
+#   with_items:
+#     - "{{ etcd_client_port }}"
+#     - "{{ etcd_peer_port }}"
+#   when: "'etcd' not in iptablesrules.stdout"
 
 
